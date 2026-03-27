@@ -1,0 +1,295 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Secure Development · Módulo 2</title>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/react/18.2.0/umd/react.production.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/react-dom/18.2.0/umd/react-dom.production.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/babel-standalone/7.23.2/babel.min.js"></script>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body { background: #04060D; }
+    @keyframes fadeUp { from{opacity:0;transform:translateY(10px)} to{opacity:1;transform:translateY(0)} }
+    @keyframes pulse { 0%,100%{opacity:0.6} 50%{opacity:1} }
+  </style>
+</head>
+<body>
+<div id="root"></div>
+<script type="text/babel">
+const { useState } = React;
+
+const MODULE = [
+  {
+    aula: "Aula 1",
+    title: "Fundamentos do Desenvolvimento Seguro",
+    color: "#22C55E",
+    dim: "#0A1F0A",
+    diagramLink: null,
+    parts: [
+      {
+        part: "Parte 1",
+        title: "Defesa em Profundidade",
+        diagramLink: "defesa-em-profundidade.html",
+        diagramLabel: "Abrir diagrama interativo",
+        summary: "Estratégia de múltiplas camadas independentes de segurança. Se uma cair, as demais sustentam.",
+        concepts: [
+          { name: "DevSecOps", desc: "Segurança integrada ao ciclo Dev + Ops. Responsabilidade compartilhada entre Dev, Ops e Sec." },
+          { name: "7 Camadas", desc: "Banco de Dados → Aplicação → API Gateway → Identity Provider → WAF → SIEM/SOAR → Backup" },
+          { name: "OWASP", desc: "Organização sem fins lucrativos. Guias, ferramentas e listas abertas para segurança de software." },
+        ],
+        deepDive: [
+          { label: "OWASP Foundation", url: "https://owasp.org" },
+          { label: "NIST Cybersecurity Framework", url: "https://www.nist.gov/cyberframework" },
+        ]
+      },
+      {
+        part: "Parte 2",
+        title: "Análise de Código Seguro",
+        diagramLink: "conceitos-sast-sca-cve-cwe.html",
+        diagramLabel: "Abrir diagrama interativo",
+        summary: "Seu código tem duas origens: o que você escreveu e o que você importou. Cada um tem sua ferramenta.",
+        concepts: [
+          { name: "SAST", desc: "Análise estática do código que você escreveu. Taint Analysis + Data Flow Analysis. Caixa branca, sem executar." },
+          { name: "SCA", desc: "Analisa dependências importadas. Lê package.json, requirements.txt, pom.xml. 57 libs vulneráveis no Juice Shop." },
+          { name: "CVE", desc: "Cadastro global de vulnerabilidades específicas. Formato CVE-Ano-Número. Ex: Log4Shell CVE-2021-44228." },
+          { name: "CWE", desc: "Categoriza padrões de fraqueza estrutural. CWE-89 = SQL Injection. CWE-79 = XSS. CWE-798 = hardcoded secret." },
+          { name: "Snyk", desc: "Une SAST + SCA num plugin. Plugin VS Code, camada gratuita, fix automático via PR." },
+        ],
+        deepDive: [
+          { label: "CVE.org — base oficial", url: "https://cve.org" },
+          { label: "CWE Top 25 Weaknesses", url: "https://cwe.mitre.org/top25/archive/2024/2024_cwe_top25.html" },
+          { label: "Snyk — instalar VS Code", url: "https://marketplace.visualstudio.com/items?itemName=snyk-security.snyk-vulnerability-scanner" },
+        ]
+      }
+    ]
+  },
+  {
+    aula: "Aula 2",
+    title: "Segurança de APIs: Riscos OWASP e Prevenção",
+    color: "#EF4444",
+    dim: "#1A0505",
+    diagramLink: "aula2-parte1-owasp-api.html",
+    parts: [
+      {
+        part: "Parte 1",
+        title: "BOLA, Broken Auth e Protocolos",
+        diagramLink: "aula2-parte1-owasp-api.html",
+        diagramLabel: "Abrir diagrama interativo",
+        summary: "Priorização OWASP: explorabilidade, ocorrência, detectabilidade e impacto. BOLA lidera as duas edições.",
+        concepts: [
+          { name: "API1 — BOLA", desc: "Sistema verifica se você está logado, não se o objeto é seu. Trocar o ID na URL acessa dados de outro usuário." },
+          { name: "API2 — Broken Auth", desc: "Credential stuffing, força bruta, JWT sem validação, troca de e-mail sem confirmação." },
+          { name: "OAuth 2", desc: "Protocolo de autorização, não autenticação. App acessa recursos em seu nome sem receber sua senha." },
+          { name: "SAML", desc: "SSO corporativo em XML. Um login dá acesso a todos os sistemas da empresa." },
+          { name: "mTLS", desc: "TLS mútuo — cliente verifica servidor E servidor verifica cliente via certificado." },
+        ],
+        deepDive: [
+          { label: "OWASP API Security Top 10 2023", url: "https://owasp.org/API-Security/editions/2023/en/0x00-header/" },
+          { label: "OWASP — BOLA", url: "https://owasp.org/API-Security/editions/2023/en/0xa1-broken-object-level-authorization/" },
+          { label: "Auth0 — OAuth 2 explained", url: "https://auth0.com/intro-to-iam/what-is-oauth-2" },
+        ]
+      },
+      {
+        part: "Parte 2",
+        title: "Manipulação e Consumo de Recursos",
+        diagramLink: null,
+        diagramLabel: null,
+        summary: "Pós-autenticação: o que o usuário legítimo pode fazer de errado com a API.",
+        concepts: [
+          { name: "API3 — Broken Prop Auth", desc: "Em 2023 unificou Excessive Data Exposure + Mass Assignment. API expõe mais do que deveria ou aceita mais do que deveria." },
+          { name: "Tamper / Payload", desc: "Modificar o payload para obter comportamento indevido. Nunca confiar nos dados do frontend." },
+          { name: "GraphQL Risk", desc: "Combinar mutation + query numa requisição — reportar alguém e acessar seus dados no mesmo request." },
+          { name: "API4 — Resource Consumption", desc: "APIs cobradas por consumo (CPU, SMS, LLM tokens). Endpoint desprotegido gera custo e dano de reputação." },
+          { name: "Rate Limiting + Gateway", desc: "Máx 3 chamadas/60s por IP. Tamanho máximo de payload. Alertas de gasto. SIEM para padrões inteligentes." },
+        ],
+        deepDive: [
+          { label: "OWASP — API3 2023", url: "https://owasp.org/API-Security/editions/2023/en/0xa3-broken-object-property-level-authorization/" },
+          { label: "OWASP — API4 2023", url: "https://owasp.org/API-Security/editions/2023/en/0xa4-unrestricted-resource-consumption/" },
+          { label: "Azure API Management", url: "https://learn.microsoft.com/en-us/azure/api-management/" },
+        ]
+      }
+    ]
+  },
+  {
+    aula: "Aula 3",
+    title: "Consolidação: OWASP API Top 10 Completo",
+    color: "#8B5CF6",
+    dim: "#110A1F",
+    diagramLink: null,
+    parts: [
+      {
+        part: "Revisão",
+        title: "API1 a API4 — Consolidação",
+        diagramLink: null,
+        diagramLabel: null,
+        summary: "Revisão dos quatro primeiros riscos com foco em prevenção prática e conexão com as camadas de defesa.",
+        concepts: [
+          { name: "API1 BOLA", desc: "Validar ownership no backend. GUIDs no lugar de IDs sequenciais. Testes cross-user como QA." },
+          { name: "API2 Broken Auth", desc: "Identity Provider centralizado. JWT com validação de assinatura e expiração. Reautenticação em operações críticas." },
+          { name: "API3 Manipulation", desc: "Schema validation. Whitelist de campos atualizáveis. Dados retornados mínimos. Backend como fonte confiável." },
+          { name: "API4 Resources", desc: "Rate limiting no Gateway. Alertas de gasto. SIEM/SOAR para detecção inteligente. Proteção de endpoints LLM." },
+        ],
+        deepDive: [
+          { label: "OWASP Juice Shop — lab prático", url: "https://github.com/juice-shop/juice-shop" },
+          { label: "OWASP API Security Project", url: "https://owasp.org/www-project-api-security/" },
+          { label: "PortSwigger Web Security Academy", url: "https://portswigger.net/web-security" },
+        ]
+      }
+    ]
+  }
+];
+
+const LAYER_MAP = [
+  { layer: "2", name: "Aplicação", color: "#EF4444", items: ["SAST", "SCA", "BOLA fix", "API3 fix", "Testes QA"] },
+  { layer: "3", name: "API Gateway", color: "#F59E0B", items: ["Rate Limiting", "Auth token", "Payload size", "Alertas de gasto"] },
+  { layer: "4", name: "Identity Provider", color: "#10B981", items: ["Broken Auth fix", "OAuth 2", "SAML", "mTLS", "JWT validation"] },
+  { layer: "5", name: "WAF", color: "#3B82F6", items: ["Credential stuffing", "CAPTCHA", "Força bruta"] },
+  { layer: "6", name: "SIEM / SOAR", color: "#8B5CF6", items: ["Detecção API4", "Padrões suspeitos", "Resposta automática"] },
+];
+
+function ConceptPill({ concept, color }) {
+  const [open, setOpen] = useState(false);
+  return (
+    <div style={{ position: "relative", display: "inline-block" }}>
+      <div onClick={() => setOpen(!open)}
+        style={{ display: "inline-flex", alignItems: "center", gap: 5, padding: "4px 10px", background: open ? color + "25" : color + "12", border: `1px solid ${open ? color + "60" : color + "25"}`, borderRadius: 20, cursor: "pointer", fontSize: 10.5, color: open ? color : "#9CA3AF", fontFamily: "monospace", transition: "all 0.15s", marginBottom: 4 }}>
+        {concept.name}
+        <span style={{ fontSize: 8, opacity: 0.6 }}>{open ? "▲" : "▼"}</span>
+      </div>
+      {open && (
+        <div style={{ position: "absolute", top: "100%", left: 0, zIndex: 10, width: 240, background: "#0D1117", border: `1px solid ${color}30`, borderRadius: 8, padding: "10px 12px", fontSize: 10.5, color: "#9CA3AF", lineHeight: 1.7, fontFamily: "monospace", marginTop: 4, boxShadow: `0 8px 24px rgba(0,0,0,0.5)` }}>
+          {concept.desc}
+        </div>
+      )}
+    </div>
+  );
+}
+
+function PartSection({ part, color }) {
+  const [open, setOpen] = useState(false);
+  return (
+    <div style={{ border: `1px solid ${open ? color + "40" : "#111827"}`, borderRadius: 10, overflow: "visible", background: open ? color + "05" : "transparent", transition: "all 0.2s", marginBottom: 8 }}>
+      <div onClick={() => setOpen(!open)} style={{ padding: "12px 14px", cursor: "pointer", display: "flex", alignItems: "center", gap: 10 }}>
+        <span style={{ fontSize: 8, color: color, background: color + "18", border: `1px solid ${color}30`, borderRadius: 3, padding: "2px 7px", fontFamily: "monospace", letterSpacing: "0.1em", flexShrink: 0 }}>{part.part}</span>
+        <div style={{ flex: 1 }}>
+          <div style={{ fontSize: 12, fontWeight: 700, color: "#E5E7EB", fontFamily: "monospace" }}>{part.title}</div>
+          <div style={{ fontSize: 10, color: "#374151", fontFamily: "monospace", marginTop: 2 }}>{part.summary}</div>
+        </div>
+        <span style={{ color: open ? color : "#1F2937", fontSize: 11, flexShrink: 0 }}>{open ? "▲" : "▼"}</span>
+      </div>
+
+      {open && (
+        <div style={{ padding: "0 14px 14px", animation: "fadeUp 0.2s ease" }}>
+          {/* Concepts */}
+          <div style={{ fontSize: 8, color: "#374151", letterSpacing: "0.2em", textTransform: "uppercase", fontFamily: "monospace", marginBottom: 8 }}>Conceitos — clique para expandir</div>
+          <div style={{ display: "flex", flexWrap: "wrap", gap: 4, marginBottom: 14 }}>
+            {part.concepts.map((c, i) => <ConceptPill key={i} concept={c} color={color} />)}
+          </div>
+
+          {/* Diagram link */}
+          {part.diagramLink && (
+            <a href={part.diagramLink} style={{ display: "inline-flex", alignItems: "center", gap: 6, padding: "7px 12px", background: color + "15", border: `1px solid ${color}35`, borderRadius: 7, textDecoration: "none", fontSize: 10.5, color: color, fontFamily: "monospace", marginBottom: 12 }}>
+              ⬡ {part.diagramLabel} ↗
+            </a>
+          )}
+
+          {/* Deep dive */}
+          <div style={{ fontSize: 8, color: "#374151", letterSpacing: "0.2em", textTransform: "uppercase", fontFamily: "monospace", marginBottom: 7 }}>Para se aprofundar</div>
+          <div style={{ display: "flex", flexDirection: "column", gap: 5 }}>
+            {part.deepDive.map((d, i) => (
+              <a key={i} href={d.url} target="_blank" rel="noopener noreferrer"
+                style={{ display: "flex", alignItems: "center", gap: 7, padding: "6px 10px", background: "#0A0A14", border: "1px solid #111827", borderRadius: 6, textDecoration: "none", fontSize: 10.5, color: "#6B7280", fontFamily: "monospace" }}>
+                <span style={{ color: color, fontSize: 9 }}>→</span>{d.label}<span style={{ marginLeft: "auto", fontSize: 9, color: "#1F2937" }}>↗</span>
+              </a>
+            ))}
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
+function App() {
+  const [activeAula, setActiveAula] = useState(null);
+  const [showMap, setShowMap] = useState(false);
+
+  return (
+    <div style={{ minHeight: "100vh", background: "#04060D", fontFamily: "monospace", padding: "24px 16px 48px", color: "#F9FAFB" }}>
+
+      {/* Header */}
+      <div style={{ textAlign: "center", marginBottom: 28 }}>
+        <div style={{ fontSize: 8, letterSpacing: "0.4em", color: "#1F2937", textTransform: "uppercase", marginBottom: 5 }}>Impacta · Pós-graduação IA Engineer</div>
+        <h1 style={{ fontSize: 20, fontWeight: 700, letterSpacing: "0.06em", marginBottom: 3 }}>SECURE DEVELOPMENT</h1>
+        <div style={{ fontSize: 9, color: "#374151", letterSpacing: "0.1em" }}>Módulo 2 · Mapa completo de estudo</div>
+      </div>
+
+      <div style={{ maxWidth: 860, margin: "0 auto" }}>
+
+        {/* Layer map toggle */}
+        <div style={{ marginBottom: 20 }}>
+          <div onClick={() => setShowMap(!showMap)}
+            style={{ padding: "10px 14px", background: "#08080F", border: `1px solid ${showMap ? "#374151" : "#111827"}`, borderRadius: 8, cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "space-between" }}>
+            <span style={{ fontSize: 9, color: "#374151", letterSpacing: "0.2em", textTransform: "uppercase" }}>🗺️ Mapa — onde cada risco vive nas camadas de defesa</span>
+            <span style={{ color: "#374151", fontSize: 10 }}>{showMap ? "▲" : "▼"}</span>
+          </div>
+          {showMap && (
+            <div style={{ padding: "14px", background: "#06060E", border: "1px solid #111827", borderTop: "none", borderRadius: "0 0 8px 8px", display: "flex", gap: 8, flexWrap: "wrap", animation: "fadeUp 0.2s ease" }}>
+              {LAYER_MAP.map((l, i) => (
+                <div key={i} style={{ flex: 1, minWidth: 140, padding: "10px", background: l.color + "08", border: `1px solid ${l.color}20`, borderRadius: 8 }}>
+                  <div style={{ fontSize: 8, color: l.color, letterSpacing: "0.2em", marginBottom: 5 }}>CAMADA {l.layer}</div>
+                  <div style={{ fontSize: 10, fontWeight: 700, color: "#E5E7EB", marginBottom: 7 }}>{l.name}</div>
+                  {l.items.map((item, j) => (
+                    <div key={j} style={{ fontSize: 9.5, color: "#4B5563", marginBottom: 3 }}>· {item}</div>
+                  ))}
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+
+        {/* Aulas */}
+        {MODULE.map((aula, ai) => (
+          <div key={ai} style={{ marginBottom: 14 }}>
+            {/* Aula header */}
+            <div onClick={() => setActiveAula(activeAula === ai ? null : ai)}
+              style={{ padding: "14px 16px", background: activeAula === ai ? aula.dim : "#07080F", border: `1px solid ${activeAula === ai ? aula.color + "40" : "#111827"}`, borderRadius: activeAula === ai ? "10px 10px 0 0" : 10, cursor: "pointer", display: "flex", alignItems: "center", gap: 12, transition: "all 0.2s" }}>
+              <div style={{ width: 36, height: 36, borderRadius: 8, background: aula.color + "15", border: `1px solid ${aula.color}30`, display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
+                <span style={{ fontSize: 8, color: aula.color, letterSpacing: "0.05em" }}>{aula.aula.replace("Aula ", "A")}</span>
+              </div>
+              <div style={{ flex: 1 }}>
+                <div style={{ fontSize: 13, fontWeight: 700, color: "#F9FAFB" }}>{aula.aula}</div>
+                <div style={{ fontSize: 10, color: "#4B5563", marginTop: 2 }}>{aula.title}</div>
+              </div>
+              <div style={{ display: "flex", gap: 3 }}>
+                {aula.parts.map((_, pi) => (
+                  <div key={pi} style={{ width: 6, height: 6, borderRadius: "50%", background: aula.color + (activeAula === ai ? "80" : "25") }} />
+                ))}
+              </div>
+              <span style={{ color: activeAula === ai ? aula.color : "#1F2937", fontSize: 12 }}>{activeAula === ai ? "▲" : "▼"}</span>
+            </div>
+
+            {/* Parts */}
+            {activeAula === ai && (
+              <div style={{ padding: "14px", background: aula.dim, border: `1px solid ${aula.color}20`, borderTop: "none", borderRadius: "0 0 10px 10px", animation: "fadeUp 0.2s ease" }}>
+                {aula.parts.map((part, pi) => (
+                  <PartSection key={pi} part={part} color={aula.color} />
+                ))}
+              </div>
+            )}
+          </div>
+        ))}
+
+        {/* Bottom note */}
+        <div style={{ marginTop: 20, padding: "12px 16px", background: "#07080F", border: "1px solid #0D1117", borderRadius: 8, fontSize: 10, color: "#1F2937", lineHeight: 1.8, textAlign: "center" }}>
+          Professor Daniel Lemeszenski · Impacta Digital · Pós-graduação IA Engineer · Módulo 2 — Secure Development
+        </div>
+      </div>
+    </div>
+  );
+}
+
+ReactDOM.createRoot(document.getElementById("root")).render(<App />);
+</script>
+</body>
+</html>

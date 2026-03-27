@@ -1,0 +1,397 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Aula 2 · Segurança de APIs</title>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/react/18.2.0/umd/react.production.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/react-dom/18.2.0/umd/react-dom.production.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/babel-standalone/7.23.2/babel.min.js"></script>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body { background: #05080F; }
+    @keyframes pulse { 0%,100%{opacity:1} 50%{opacity:0.4} }
+    @keyframes scanline { 0%{transform:translateY(-100%)} 100%{transform:translateY(100vh)} }
+    @keyframes fadeIn { from{opacity:0;transform:translateY(8px)} to{opacity:1;transform:translateY(0)} }
+  </style>
+</head>
+<body>
+  <div id="root"></div>
+  <script type="text/babel">
+    const { useState } = React;
+
+    const RISKS = [
+      {
+        id: "bola",
+        rank: "API1",
+        name: "BOLA",
+        full: "Broken Object Level Authorization",
+        color: "#EF4444",
+        dim: "#2D0808",
+        threat: "CRÍTICO",
+        criteria: { explorabilidade: 5, ocorrencia: 5, detectabilidade: 2, impacto: 5 },
+        summary: "O sistema verifica se você está logado, mas não verifica se o objeto que você pediu é seu.",
+        attack: {
+          title: "Como o ataque acontece",
+          steps: [
+            { icon: "1️⃣", text: "Atacante se autentica normalmente e obtém um token válido" },
+            { icon: "2️⃣", text: "Faz GET /api/usuarios/12345/salario com seu token" },
+            { icon: "3️⃣", text: "Troca o ID para 12346, 12347... iterando sequencialmente" },
+            { icon: "4️⃣", text: "API retorna dados de todos os usuários — nunca verificou se 12345 pertence ao token" },
+          ],
+          code: 'GET /api/usuarios/12346/salario\nAuthorization: Bearer <token_do_usuario_A>\n\n// API retorna dados do usuário B ❌\n// Deveria verificar: token.userId === 12346?'
+        },
+        prevention: [
+          { icon: "🔐", title: "Validar ownership", desc: "Comparar ID do objeto com ID extraído do token — não confiar na URL" },
+          { icon: "🎲", title: "Usar GUIDs", desc: "IDs não sequenciais tornam a iteração inviável: a7f3b2c1-... ao invés de 12345" },
+          { icon: "🧪", title: "Testes automatizados", desc: "Token do usuário A tentando acessar recurso do usuário B — se passar, está vulnerável" },
+        ],
+        note: "Como QA: esse é seu território direto. Criar casos de teste cross-user é a forma mais eficaz de detectar BOLA.",
+        resources: [
+          { type: "📘 OWASP", label: "OWASP — API1 BOLA", url: "https://owasp.org/API-Security/editions/2023/en/0xa1-broken-object-level-authorization/" },
+          { type: "▶ YouTube", label: "STÖK — BOLA/IDOR Attack Demo", url: "https://www.youtube.com/watch?v=oUAeWhW5b8c" },
+        ]
+      },
+      {
+        id: "auth",
+        rank: "API2",
+        name: "Broken Auth",
+        full: "Broken Authentication",
+        color: "#F59E0B",
+        dim: "#2D1800",
+        threat: "ALTO",
+        criteria: { explorabilidade: 4, ocorrencia: 4, detectabilidade: 3, impacto: 5 },
+        summary: "Falhas nos mecanismos de autenticação permitem que atacantes assumam identidades alheias sem a senha real.",
+        attack: {
+          title: "Vetores de ataque",
+          steps: [
+            { icon: "🔁", text: "Credential stuffing — senhas vazadas de outros serviços testadas em massa" },
+            { icon: "💪", text: "Força bruta — combinações automáticas sem bloqueio por tentativas" },
+            { icon: "🪙", text: "JWT sem validação — token expirado ou com assinatura não verificada aceito" },
+            { icon: "📧", text: "Troca de e-mail sem confirmação — atacante assume a conta permanentemente" },
+          ],
+          code: '// JWT sem verificar expiração ❌\nconst decoded = jwt.decode(token); // não valida!\n\n// Correto ✅\nconst decoded = jwt.verify(token, SECRET, {\n  algorithms: ["HS256"],\n  ignoreExpiration: false\n});'
+        },
+        prevention: [
+          { icon: "🏛️", title: "Identity Provider", desc: "Delegar autenticação para Azure AD, AWS Cognito ou Google — MFA e políticas já inclusas" },
+          { icon: "🛡️", title: "WAF + CAPTCHA", desc: "Bloquear automação antes de chegar na aplicação — camada 5 do diagrama" },
+          { icon: "🔄", title: "Reautenticação sensível", desc: "Operações críticas (trocar e-mail, senha) exigem confirmação da identidade atual" },
+        ],
+        note: "Nunca expor API keys no frontend — podem ser interceptadas. Use tokens temporários gerados após autenticação.",
+        resources: [
+          { type: "📘 OWASP", label: "OWASP — API2 Broken Authentication", url: "https://owasp.org/API-Security/editions/2023/en/0xa2-broken-authentication/" },
+          { type: "▶ YouTube", label: "Fireship — JWT Security Pitfalls", url: "https://www.youtube.com/watch?v=7Q17ubqLfaM" },
+        ]
+      },
+    ];
+
+    const PROTOCOLS = [
+      {
+        id: "oauth2",
+        name: "OAuth 2",
+        subtitle: "Protocolo de autorização",
+        color: "#3B82F6",
+        icon: "🔑",
+        what: "OAuth 2 é autorização, não autenticação. Não diz quem você é — diz o que um app pode fazer em seu nome.",
+        flow: [
+          "Você quer que um app acesse seus emails",
+          "Em vez de dar sua senha, você autoriza via OAuth 2",
+          "Google emite token com escopo limitado: 'pode ler, não pode deletar'",
+          "App usa o token — suas credenciais nunca saíram do Google",
+        ],
+        note: "OpenID Connect é construído sobre OAuth 2 e adiciona identidade — é a combinação que está por trás de todo 'Entrar com Google'.",
+      },
+      {
+        id: "saml",
+        name: "SAML",
+        subtitle: "Security Assertion Markup Language",
+        color: "#10B981",
+        icon: "🏢",
+        what: "Padrão corporativo de SSO baseado em XML. Um login dá acesso a todos os sistemas da empresa.",
+        flow: [
+          "Você faz login uma vez no sistema da empresa",
+          "SAML gera uma assertion XML assinada",
+          "Todos os sistemas confiam nessa assertion",
+          "Jira, Confluence, GitHub corporativo — sem logar novamente",
+        ],
+        note: "Onde OAuth 2 domina o mundo web/mobile, SAML domina ambientes enterprise. São complementares, não concorrentes.",
+      },
+      {
+        id: "mtls",
+        name: "mTLS",
+        subtitle: "Mutual Transport Layer Security",
+        color: "#8B5CF6",
+        icon: "🔒",
+        what: "TLS mútuo — os dois lados apresentam certificados. Cliente verifica servidor E servidor verifica cliente.",
+        flow: [
+          "TLS normal: cliente verifica o servidor (HTTPS padrão)",
+          "mTLS: servidor também verifica o cliente via certificado",
+          "Só estabelece conexão se os dois forem quem afirmam ser",
+          "Mesmo com token válido, sem certificado a conexão não sobe",
+        ],
+        note: "Usado em comunicação entre microserviços — garante que o serviço de pagamento só aceita chamadas do serviço de pedidos.",
+      },
+    ];
+
+    const FLOWS = [
+      {
+        id: "user",
+        title: "Usuário + Senha",
+        subtitle: "Para usuários humanos",
+        color: "#06B6D4",
+        icon: "👤",
+        steps: ["Usuário fornece credenciais no app", "Identity Server valida e emite token", "App envia token em cada requisição", "Backend valida assinatura e expiração"],
+        risk: "Vetores: credential stuffing, força bruta, phishing",
+      },
+      {
+        id: "service",
+        title: "Client Secret",
+        subtitle: "Para serviços (máquina → máquina)",
+        color: "#F97316",
+        icon: "⚙️",
+        steps: ["Serviço A se autentica com Client ID + Secret", "Identity Server emite token de serviço", "Serviço A chama Serviço B com o token", "Serviço B valida — não há humano envolvido"],
+        risk: "Risco principal: Client Secret vazar — rotacionar periodicamente, nunca commitar no código",
+      },
+    ];
+
+    const PRIORITY = [
+      { label: "Explorabilidade", desc: "Quão fácil de explorar", color: "#EF4444" },
+      { label: "Ocorrência", desc: "Quão comum no mercado", color: "#F59E0B" },
+      { label: "Detectabilidade", desc: "Quão difícil de perceber", color: "#8B5CF6" },
+      { label: "Impacto", desc: "Dano real se explorada", color: "#10B981" },
+    ];
+
+    function Bar({ value, color }) {
+      return (
+        <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
+          {[1,2,3,4,5].map(i => (
+            <div key={i} style={{ width: 10, height: 10, borderRadius: 2, background: i <= value ? color : "#1F2937", transition: "background 0.3s" }} />
+          ))}
+        </div>
+      );
+    }
+
+    function RiskCard({ risk, active, onToggle }) {
+      const [tab, setTab] = useState("attack");
+      return (
+        <div style={{ border: `1px solid ${active ? risk.color + "60" : risk.color + "20"}`, borderRadius: 12, overflow: "hidden", transition: "all 0.3s", background: active ? risk.dim : "#08080F" }}>
+          {/* Header */}
+          <div onClick={onToggle} style={{ padding: "16px 18px", cursor: "pointer", display: "flex", alignItems: "center", gap: 12 }}>
+            <div style={{ width: 44, height: 44, borderRadius: 8, background: risk.color + "20", border: `1px solid ${risk.color}40`, display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
+              <span style={{ fontSize: 8, color: risk.color, letterSpacing: "0.1em", fontFamily: "monospace" }}>{risk.rank}</span>
+            </div>
+            <div style={{ flex: 1 }}>
+              <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 3 }}>
+                <span style={{ fontSize: 15, fontWeight: 700, color: "#F9FAFB", fontFamily: "monospace" }}>{risk.name}</span>
+                <span style={{ fontSize: 7.5, color: risk.color, background: risk.color + "20", border: `1px solid ${risk.color}30`, borderRadius: 3, padding: "1px 6px", letterSpacing: "0.1em" }}>{risk.threat}</span>
+              </div>
+              <div style={{ fontSize: 9, color: "#4B5563", fontFamily: "monospace" }}>{risk.full}</div>
+            </div>
+            {/* Criteria bars */}
+            <div style={{ display: "flex", flexDirection: "column", gap: 4, flexShrink: 0 }}>
+              {PRIORITY.map(p => (
+                <div key={p.label} style={{ display: "flex", alignItems: "center", gap: 6 }}>
+                  <span style={{ fontSize: 7, color: "#374151", width: 80, textAlign: "right", fontFamily: "monospace" }}>{p.label}</span>
+                  <Bar value={risk.criteria[p.label.toLowerCase().replace("ê","e").replace("ç","c").replace("ó","o").replace("ê","e") === "explorabilidade" ? "explorabilidade" : p.label.toLowerCase() === "ocorrência" ? "ocorrencia" : p.label.toLowerCase() === "detectabilidade" ? "detectabilidade" : "impacto"]} color={p.color} />
+                </div>
+              ))}
+            </div>
+            <div style={{ fontSize: 14, color: active ? risk.color : "#1F2937", marginLeft: 8, flexShrink: 0 }}>{active ? "▲" : "▼"}</div>
+          </div>
+
+          {/* Summary */}
+          <div style={{ padding: "0 18px 12px", borderTop: `1px solid ${risk.color}15` }}>
+            <div style={{ fontSize: 10.5, color: "#6B7280", fontFamily: "monospace", lineHeight: 1.7, paddingTop: 10 }}>{risk.summary}</div>
+          </div>
+
+          {/* Detail panel */}
+          {active && (
+            <div style={{ padding: "0 18px 18px", animation: "fadeIn 0.2s ease" }}>
+              {/* Tabs */}
+              <div style={{ display: "flex", gap: 4, marginBottom: 14, borderBottom: `1px solid ${risk.color}15`, paddingBottom: 10 }}>
+                {["attack", "prevention", "resources"].map(t => (
+                  <button key={t} onClick={(e) => { e.stopPropagation(); setTab(t); }}
+                    style={{ background: tab === t ? risk.color + "20" : "transparent", border: `1px solid ${tab === t ? risk.color + "50" : "#1F2937"}`, color: tab === t ? risk.color : "#374151", fontSize: 8.5, padding: "4px 10px", borderRadius: 4, cursor: "pointer", fontFamily: "monospace", letterSpacing: "0.1em", textTransform: "uppercase" }}>
+                    {t === "attack" ? "Ataque" : t === "prevention" ? "Prevenção" : "Links"}
+                  </button>
+                ))}
+              </div>
+
+              {tab === "attack" && (
+                <div style={{ display: "flex", gap: 14, flexWrap: "wrap" }}>
+                  <div style={{ flex: 1, minWidth: 200 }}>
+                    <div style={{ fontSize: 8, color: risk.color + "80", letterSpacing: "0.2em", textTransform: "uppercase", marginBottom: 10, fontFamily: "monospace" }}>{risk.attack.title}</div>
+                    <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+                      {risk.attack.steps.map((s, i) => (
+                        <div key={i} style={{ display: "flex", gap: 8, alignItems: "flex-start" }}>
+                          <span style={{ fontSize: 13, flexShrink: 0 }}>{s.icon}</span>
+                          <span style={{ fontSize: 10.5, color: "#9CA3AF", lineHeight: 1.6, fontFamily: "monospace" }}>{s.text}</span>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                  <div style={{ flex: 1, minWidth: 200 }}>
+                    <div style={{ fontSize: 8, color: "#374151", letterSpacing: "0.2em", textTransform: "uppercase", marginBottom: 10, fontFamily: "monospace" }}>Exemplo de código</div>
+                    <pre style={{ background: "#030712", border: `1px solid ${risk.color}20`, borderRadius: 6, padding: 12, fontSize: 9.5, color: "#6EE7B7", lineHeight: 1.7, overflow: "auto", fontFamily: "monospace" }}>{risk.attack.code}</pre>
+                  </div>
+                </div>
+              )}
+
+              {tab === "prevention" && (
+                <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+                  {risk.prevention.map((p, i) => (
+                    <div key={i} style={{ display: "flex", gap: 10, padding: "10px 12px", background: risk.color + "08", border: `1px solid ${risk.color}15`, borderRadius: 8 }}>
+                      <span style={{ fontSize: 18, flexShrink: 0 }}>{p.icon}</span>
+                      <div>
+                        <div style={{ fontSize: 10.5, fontWeight: 700, color: "#E5E7EB", marginBottom: 3, fontFamily: "monospace" }}>{p.title}</div>
+                        <div style={{ fontSize: 10, color: "#6B7280", lineHeight: 1.6, fontFamily: "monospace" }}>{p.desc}</div>
+                      </div>
+                    </div>
+                  ))}
+                  <div style={{ padding: "8px 12px", background: "#0D1117", border: `1px solid ${risk.color}25`, borderRadius: 6, borderLeft: `3px solid ${risk.color}`, marginTop: 4 }}>
+                    <span style={{ fontSize: 9.5, color: "#6B7280", fontFamily: "monospace" }}>💡 {risk.note}</span>
+                  </div>
+                </div>
+              )}
+
+              {tab === "resources" && (
+                <div style={{ display: "flex", flexDirection: "column", gap: 7 }}>
+                  {risk.resources.map((r, i) => {
+                    const tc = r.type === "📘 OWASP" ? { bg: "#0C1A2E", border: "#3B82F6", text: "#93C5FD" } : { bg: "#450A0A", border: "#F87171", text: "#FCA5A5" };
+                    return (
+                      <a key={i} href={r.url} target="_blank" rel="noopener noreferrer"
+                        style={{ display: "flex", alignItems: "center", gap: 8, padding: "8px 10px", background: tc.bg, border: `1px solid ${tc.border}30`, borderRadius: 7, textDecoration: "none" }}>
+                        <span style={{ fontSize: 7, color: tc.text, background: tc.border + "20", border: `1px solid ${tc.border}40`, borderRadius: 3, padding: "1px 5px", whiteSpace: "nowrap", fontFamily: "monospace" }}>{r.type}</span>
+                        <span style={{ fontSize: 10, color: "#C9D1D9", fontFamily: "monospace" }}>{r.label}</span>
+                        <span style={{ marginLeft: "auto", color: "#374151" }}>↗</span>
+                      </a>
+                    );
+                  })}
+                </div>
+              )}
+            </div>
+          )}
+        </div>
+      );
+    }
+
+    function ProtocolCard({ p }) {
+      const [open, setOpen] = useState(false);
+      return (
+        <div style={{ border: `1px solid ${open ? p.color + "50" : p.color + "18"}`, borderRadius: 10, overflow: "hidden", background: open ? p.color + "08" : "#08080F", transition: "all 0.2s", cursor: "pointer" }} onClick={() => setOpen(!open)}>
+          <div style={{ padding: "12px 14px", display: "flex", alignItems: "center", gap: 10 }}>
+            <span style={{ fontSize: 20 }}>{p.icon}</span>
+            <div style={{ flex: 1 }}>
+              <div style={{ fontSize: 13, fontWeight: 700, color: p.color, fontFamily: "monospace" }}>{p.name}</div>
+              <div style={{ fontSize: 8.5, color: "#4B5563", fontFamily: "monospace" }}>{p.subtitle}</div>
+            </div>
+            <span style={{ color: open ? p.color : "#1F2937", fontSize: 12 }}>{open ? "▲" : "▼"}</span>
+          </div>
+          {open && (
+            <div style={{ padding: "0 14px 14px", animation: "fadeIn 0.2s ease" }}>
+              <div style={{ fontSize: 10.5, color: "#9CA3AF", lineHeight: 1.7, marginBottom: 10, fontFamily: "monospace" }}>{p.what}</div>
+              <div style={{ display: "flex", flexDirection: "column", gap: 5, marginBottom: 10 }}>
+                {p.flow.map((f, i) => (
+                  <div key={i} style={{ display: "flex", gap: 8, alignItems: "flex-start" }}>
+                    <span style={{ fontSize: 8, color: p.color, background: p.color + "20", borderRadius: "50%", width: 16, height: 16, display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0, marginTop: 1, fontFamily: "monospace" }}>{i+1}</span>
+                    <span style={{ fontSize: 10, color: "#6B7280", lineHeight: 1.6, fontFamily: "monospace" }}>{f}</span>
+                  </div>
+                ))}
+              </div>
+              <div style={{ padding: "7px 10px", background: "#0D1117", borderLeft: `2px solid ${p.color}50`, borderRadius: "0 4px 4px 0", fontSize: 9.5, color: "#4B5563", fontFamily: "monospace", lineHeight: 1.6 }}>{p.note}</div>
+            </div>
+          )}
+        </div>
+      );
+    }
+
+    function FlowCard({ f }) {
+      return (
+        <div style={{ flex: 1, minWidth: 220, border: `1px solid ${f.color}25`, borderRadius: 10, padding: "14px", background: f.color + "06" }}>
+          <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 10 }}>
+            <span style={{ fontSize: 18 }}>{f.icon}</span>
+            <div>
+              <div style={{ fontSize: 12, fontWeight: 700, color: f.color, fontFamily: "monospace" }}>{f.title}</div>
+              <div style={{ fontSize: 8.5, color: "#374151", fontFamily: "monospace" }}>{f.subtitle}</div>
+            </div>
+          </div>
+          <div style={{ display: "flex", flexDirection: "column", gap: 6, marginBottom: 10 }}>
+            {f.steps.map((s, i) => (
+              <div key={i} style={{ display: "flex", gap: 7, alignItems: "flex-start" }}>
+                <div style={{ width: 16, height: 16, borderRadius: "50%", background: f.color + "25", border: `1px solid ${f.color}40`, display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0, marginTop: 1 }}>
+                  <span style={{ fontSize: 7, color: f.color, fontFamily: "monospace" }}>{i+1}</span>
+                </div>
+                {i < f.steps.length - 1 && (
+                  <span style={{ position: "absolute", fontSize: 8, color: f.color + "30" }}></span>
+                )}
+                <span style={{ fontSize: 10, color: "#6B7280", lineHeight: 1.6, fontFamily: "monospace" }}>{s}</span>
+              </div>
+            ))}
+          </div>
+          <div style={{ fontSize: 9, color: f.color + "90", background: f.color + "10", border: `1px solid ${f.color}20`, borderRadius: 5, padding: "5px 8px", fontFamily: "monospace", lineHeight: 1.5 }}>⚠️ {f.risk}</div>
+        </div>
+      );
+    }
+
+    function App() {
+      const [activeRisk, setActiveRisk] = useState(null);
+
+      return (
+        <div style={{ minHeight: "100vh", background: "#05080F", fontFamily: "monospace", padding: "24px 16px 40px", color: "#F9FAFB" }}>
+
+          {/* Header */}
+          <div style={{ textAlign: "center", marginBottom: 24 }}>
+            <div style={{ fontSize: 8, letterSpacing: "0.4em", color: "#1F2937", textTransform: "uppercase", marginBottom: 5 }}>Secure Development · Módulo 2 · Aula 2 · Parte 1</div>
+            <h1 style={{ fontSize: 18, fontWeight: 700, letterSpacing: "0.08em", color: "#F9FAFB", marginBottom: 4 }}>SEGURANÇA DE APIS</h1>
+            <div style={{ fontSize: 9, color: "#374151", letterSpacing: "0.1em" }}>OWASP API Top 10 · Riscos e Prevenção</div>
+          </div>
+
+          <div style={{ maxWidth: 920, margin: "0 auto" }}>
+
+            {/* Priorization legend */}
+            <div style={{ background: "#080B14", border: "1px solid #111827", borderRadius: 8, padding: "10px 14px", marginBottom: 20, display: "flex", gap: 20, flexWrap: "wrap", alignItems: "center" }}>
+              <span style={{ fontSize: 8, color: "#374151", letterSpacing: "0.2em", textTransform: "uppercase" }}>Critérios OWASP →</span>
+              {PRIORITY.map(p => (
+                <div key={p.label} style={{ display: "flex", alignItems: "center", gap: 6 }}>
+                  <div style={{ width: 7, height: 7, borderRadius: 2, background: p.color }} />
+                  <div>
+                    <div style={{ fontSize: 8.5, color: "#9CA3AF" }}>{p.label}</div>
+                    <div style={{ fontSize: 7.5, color: "#374151" }}>{p.desc}</div>
+                  </div>
+                </div>
+              ))}
+            </div>
+
+            {/* Risk Cards */}
+            <div style={{ fontSize: 8, letterSpacing: "0.25em", color: "#1F2937", textTransform: "uppercase", marginBottom: 10 }}>▌ Riscos Principais</div>
+            <div style={{ display: "flex", flexDirection: "column", gap: 10, marginBottom: 28 }}>
+              {RISKS.map(r => (
+                <RiskCard key={r.id} risk={r} active={activeRisk === r.id} onToggle={() => setActiveRisk(activeRisk === r.id ? null : r.id)} />
+              ))}
+            </div>
+
+            {/* Auth Flows */}
+            <div style={{ fontSize: 8, letterSpacing: "0.25em", color: "#1F2937", textTransform: "uppercase", marginBottom: 10 }}>▌ Fluxos de Autenticação</div>
+            <div style={{ display: "flex", gap: 12, flexWrap: "wrap", marginBottom: 28 }}>
+              {FLOWS.map(f => <FlowCard key={f.id} f={f} />)}
+            </div>
+
+            {/* Protocols */}
+            <div style={{ fontSize: 8, letterSpacing: "0.25em", color: "#1F2937", textTransform: "uppercase", marginBottom: 10 }}>▌ Protocolos (clique para expandir)</div>
+            <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(260px, 1fr))", gap: 10 }}>
+              {PROTOCOLS.map(p => <ProtocolCard key={p.id} p={p} />)}
+            </div>
+
+            {/* Footer connection */}
+            <div style={{ marginTop: 24, padding: "10px 14px", background: "#080B14", border: "1px solid #111827", borderRadius: 8, fontSize: 9.5, color: "#374151", lineHeight: 1.7, textAlign: "center" }}>
+              🗺️ BOLA → Camada 2 (Aplicação) · Broken Auth → Camada 4 (Identity Provider) · Rate Limiting → Camada 3 (API Gateway) · Logs → Camada 6 (SIEM)
+            </div>
+          </div>
+        </div>
+      );
+    }
+
+    ReactDOM.createRoot(document.getElementById("root")).render(<App />);
+  </script>
+</body>
+</html>

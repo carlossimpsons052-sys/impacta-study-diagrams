@@ -1,0 +1,98 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Impacta · Secure Development</title>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body { min-height: 100vh; background: #04060D; font-family: 'Courier New', monospace; display: flex; flex-direction: column; align-items: center; justify-content: center; padding: 40px 20px; color: #F9FAFB; }
+    .label { font-size: 9px; letter-spacing: 0.35em; color: #1F2937; text-transform: uppercase; margin-bottom: 8px; }
+    h1 { font-size: 22px; font-weight: 700; letter-spacing: 0.08em; margin-bottom: 6px; }
+    .sub { font-size: 10px; color: #374151; margin-bottom: 40px; }
+    .section-label { font-size: 8px; letter-spacing: 0.3em; color: #1F2937; text-transform: uppercase; margin-bottom: 10px; width: 100%; max-width: 520px; }
+    .cards { display: flex; flex-direction: column; gap: 8px; width: 100%; max-width: 520px; margin-bottom: 24px; }
+    a.card { display: flex; align-items: center; gap: 14px; padding: 16px 18px; border-radius: 10px; text-decoration: none; border: 1px solid transparent; transition: all 0.2s; }
+    a.card:hover { transform: translateY(-2px); }
+    a.card-hub { background: #0A0A1A; border-color: #8B5CF630; }
+    a.card-hub:hover { border-color: #8B5CF6; }
+    a.card-1 { background: #0C1A10; border-color: #22C55E20; }
+    a.card-1:hover { border-color: #22C55E; }
+    a.card-2 { background: #1A0808; border-color: #EF444420; }
+    a.card-2:hover { border-color: #EF4444; }
+    a.card-docker { background: #001A2E; border-color: #0EA5E920; }
+    a.card-docker:hover { border-color: #0EA5E9; }
+    .card-docker .title { color: #38BDF8; }
+    .icon { font-size: 20px; flex-shrink: 0; }
+    .info { flex: 1; }
+    .title { font-size: 12px; font-weight: 700; margin-bottom: 2px; }
+    .card-hub .title { color: #A78BFA; }
+    .card-1 .title { color: #86EFAC; }
+    .card-2 .title { color: #FCA5A5; }
+    .desc { font-size: 9px; color: #374151; line-height: 1.6; }
+    .arrow { font-size: 12px; color: #1F2937; flex-shrink: 0; }
+    .footer { margin-top: 32px; font-size: 8px; color: #111827; letter-spacing: 0.15em; }
+    .badge { font-size: 7px; color: #8B5CF6; background: #8B5CF615; border: 1px solid #8B5CF625; border-radius: 3px; padding: 1px 6px; margin-bottom: 6px; display: inline-block; }
+  </style>
+</head>
+<body>
+  <div class="label">Pós-graduação IA Engineer · Impacta</div>
+  <h1>SECURE DEVELOPMENT</h1>
+  <div class="sub">Módulo 2 · Diagramas Interativos de Estudo</div>
+
+  <div class="section-label">▌ Mapa do Módulo</div>
+  <div class="cards">
+    <a class="card card-hub" href="modulo2-hub.html">
+      <div class="icon">🗺️</div>
+      <div class="info">
+        <div class="badge">NOVO</div>
+        <div class="title">Hub completo — Módulo 2</div>
+        <div class="desc">Todas as aulas, conceitos e links de aprofundamento num mapa navegável. Comece aqui.</div>
+      </div>
+      <div class="arrow">→</div>
+    </a>
+  </div>
+
+  <div class="section-label">▌ Diagramas por Aula</div>
+  <div class="cards">
+    <a class="card card-1" href="defesa-em-profundidade.html">
+      <div class="icon">🛡️</div>
+      <div class="info">
+        <div class="title">Defesa em Profundidade</div>
+        <div class="desc">7 camadas de segurança · Aula 1 · Parte 1</div>
+      </div>
+      <div class="arrow">→</div>
+    </a>
+    <a class="card card-1" href="conceitos-sast-sca-cve-cwe.html">
+      <div class="icon">🔍</div>
+      <div class="info">
+        <div class="title">SAST · SCA · CVE · CWE</div>
+        <div class="desc">Análise de código seguro · Aula 1 · Parte 2</div>
+      </div>
+      <div class="arrow">→</div>
+    </a>
+    <a class="card card-2" href="aula2-parte1-owasp-api.html">
+      <div class="icon">🎯</div>
+      <div class="info">
+        <div class="title">OWASP API · BOLA · Broken Auth · OAuth2 · SAML · mTLS</div>
+        <div class="desc">Riscos e protocolos · Aula 2 · Parte 1</div>
+      </div>
+      <div class="arrow">→</div>
+    </a>
+  </div>
+
+  <div class="section-label">▌ Outros Módulos</div>
+  <div class="cards">
+    <a class="card card-docker" href="docker-containers-fundamentals.html">
+      <div class="icon">🐳</div>
+      <div class="info">
+        <div class="title">Fundamentos de Docker e Containers</div>
+        <div class="desc">Containers, imagens, volumes, redes e orquestração</div>
+      </div>
+      <div class="arrow">→</div>
+    </a>
+  </div>
+
+  <div class="footer">MÓDULO 2 · DANIEL LEMESZENSKI · IMPACTA DIGITAL</div>
+</body>
+</html>
