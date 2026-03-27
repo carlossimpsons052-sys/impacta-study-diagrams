@@ -1,0 +1,890 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Fundamentos de Docker e Container</title>
+<link href="https://fonts.googleapis.com/css2?family=Space+Mono:wght@400;700&family=Syne:wght@400;600;700;800&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg: #1a1a1a;
+    --bg2: #222222;
+    --bg3: #2a2a2a;
+    --card: #2e2e2e;
+    --accent: #c8f135;
+    --accent2: #a0c520;
+    --text: #e8e8e8;
+    --muted: #888;
+    --border: #3a3a3a;
+    --code-bg: #1e1e1e;
+    --red: #e06c75;
+    --blue: #61afef;
+    --orange: #d19a66;
+    --green: #98c379;
+  }
+
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+
+  body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: 'Syne', sans-serif;
+    line-height: 1.7;
+    overflow-x: hidden;
+  }
+
+  /* HERO */
+  .hero {
+    background: linear-gradient(135deg, #111 0%, #1a1a1a 50%, #111 100%);
+    border-bottom: 2px solid var(--accent);
+    padding: 60px 40px 50px;
+    position: relative;
+    overflow: hidden;
+  }
+  .hero::before {
+    content: '';
+    position: absolute;
+    top: -60px; right: -60px;
+    width: 300px; height: 300px;
+    background: radial-gradient(circle, rgba(200,241,53,0.07) 0%, transparent 70%);
+    pointer-events: none;
+  }
+  .hero-label {
+    font-family: 'Space Mono', monospace;
+    font-size: 11px;
+    color: var(--accent);
+    letter-spacing: 3px;
+    text-transform: uppercase;
+    margin-bottom: 12px;
+  }
+  .hero h1 {
+    font-size: clamp(28px, 5vw, 52px);
+    font-weight: 800;
+    letter-spacing: -1px;
+    line-height: 1.1;
+    margin-bottom: 8px;
+  }
+  .hero-sub {
+    color: var(--muted);
+    font-family: 'Space Mono', monospace;
+    font-size: 13px;
+  }
+
+  /* NAV */
+  .nav {
+    position: sticky;
+    top: 0;
+    z-index: 100;
+    background: rgba(26,26,26,0.95);
+    backdrop-filter: blur(10px);
+    border-bottom: 1px solid var(--border);
+    padding: 0 40px;
+    display: flex;
+    gap: 0;
+    overflow-x: auto;
+  }
+  .nav-btn {
+    padding: 16px 24px;
+    font-family: 'Space Mono', monospace;
+    font-size: 12px;
+    font-weight: 700;
+    letter-spacing: 1px;
+    text-transform: uppercase;
+    color: var(--muted);
+    border: none;
+    background: transparent;
+    cursor: pointer;
+    border-bottom: 2px solid transparent;
+    transition: all 0.2s;
+    white-space: nowrap;
+  }
+  .nav-btn:hover { color: var(--text); }
+  .nav-btn.active { color: var(--accent); border-bottom-color: var(--accent); }
+
+  /* SECTIONS */
+  .section {
+    display: none;
+    padding: 50px 40px;
+    max-width: 1100px;
+    margin: 0 auto;
+    animation: fadeIn 0.4s ease;
+  }
+  .section.active { display: block; }
+
+  @keyframes fadeIn {
+    from { opacity: 0; transform: translateY(16px); }
+    to { opacity: 1; transform: translateY(0); }
+  }
+
+  .section-header {
+    margin-bottom: 40px;
+    padding-bottom: 20px;
+    border-bottom: 1px solid var(--border);
+  }
+  .section-tag {
+    font-family: 'Space Mono', monospace;
+    font-size: 11px;
+    color: var(--accent);
+    letter-spacing: 3px;
+    text-transform: uppercase;
+    margin-bottom: 8px;
+  }
+  .section-header h2 {
+    font-size: 32px;
+    font-weight: 800;
+    letter-spacing: -0.5px;
+  }
+
+  /* TOPIC BLOCKS */
+  .topic {
+    margin-bottom: 40px;
+  }
+  .topic h3 {
+    font-size: 20px;
+    font-weight: 700;
+    margin-bottom: 12px;
+    color: var(--text);
+  }
+  .topic p {
+    color: #bbb;
+    margin-bottom: 12px;
+    font-size: 15px;
+    line-height: 1.8;
+  }
+
+  /* GRID LAYOUTS */
+  .grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; margin: 20px 0; }
+  .grid-3 { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 16px; margin: 20px 0; }
+  @media (max-width: 700px) {
+    .grid-2, .grid-3 { grid-template-columns: 1fr; }
+    .section { padding: 30px 20px; }
+    .nav { padding: 0 10px; }
+  }
+
+  /* CARDS */
+  .card {
+    background: var(--card);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 20px;
+  }
+  .card h4 {
+    font-size: 14px;
+    font-weight: 700;
+    margin-bottom: 8px;
+    color: var(--text);
+  }
+  .card p {
+    font-size: 13px;
+    color: var(--muted);
+    line-height: 1.6;
+  }
+  .card.accent-border { border-left: 3px solid var(--accent); }
+  .card.highlight {
+    background: rgba(200,241,53,0.05);
+    border-color: rgba(200,241,53,0.3);
+  }
+
+  /* COMPARE TABLE */
+  .compare {
+    background: var(--card);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    overflow: hidden;
+    margin: 20px 0;
+  }
+  .compare-header {
+    display: grid;
+    grid-template-columns: 1fr 1fr 1fr;
+    background: var(--bg3);
+    padding: 14px 20px;
+    font-family: 'Space Mono', monospace;
+    font-size: 11px;
+    letter-spacing: 2px;
+    text-transform: uppercase;
+    color: var(--muted);
+    border-bottom: 1px solid var(--border);
+  }
+  .compare-row {
+    display: grid;
+    grid-template-columns: 1fr 1fr 1fr;
+    padding: 12px 20px;
+    border-bottom: 1px solid var(--border);
+    font-size: 14px;
+    align-items: start;
+  }
+  .compare-row:last-child { border-bottom: none; }
+  .compare-row:hover { background: rgba(255,255,255,0.02); }
+  .compare-row .label { color: var(--accent); font-weight: 600; font-size: 13px; }
+  .compare-row .vm { color: #bbb; font-size: 13px; }
+  .compare-row .container-col { color: #bbb; font-size: 13px; }
+
+  /* CODE BLOCKS */
+  .code-block {
+    background: var(--code-bg);
+    border: 1px solid #333;
+    border-radius: 6px;
+    padding: 18px 20px;
+    margin: 16px 0;
+    font-family: 'Space Mono', monospace;
+    font-size: 13px;
+    line-height: 1.8;
+    overflow-x: auto;
+  }
+  .code-block .comment { color: #5c6370; }
+  .code-block .keyword { color: var(--red); }
+  .code-block .value { color: var(--blue); }
+  .code-block .string { color: var(--green); }
+  .code-block .cmd { color: var(--orange); }
+  .code-block .sudo { color: var(--red); font-weight: bold; }
+  .code-block .param { color: var(--accent); }
+
+  /* HIGHLIGHT BOX */
+  .highlight-box {
+    background: rgba(200,241,53,0.06);
+    border: 1px solid rgba(200,241,53,0.25);
+    border-radius: 8px;
+    padding: 20px 24px;
+    margin: 20px 0;
+  }
+  .highlight-box p {
+    color: #ccc;
+    font-size: 14px;
+    margin: 0;
+  }
+  .highlight-box strong { color: var(--accent); }
+
+  /* QUOTE */
+  .quote {
+    border-left: 3px solid var(--accent);
+    padding: 12px 20px;
+    margin: 20px 0;
+    font-style: italic;
+    color: var(--muted);
+    font-size: 14px;
+  }
+
+  /* BADGE */
+  .badge {
+    display: inline-block;
+    background: rgba(200,241,53,0.1);
+    color: var(--accent);
+    border: 1px solid rgba(200,241,53,0.3);
+    border-radius: 4px;
+    padding: 3px 10px;
+    font-family: 'Space Mono', monospace;
+    font-size: 11px;
+    font-weight: 700;
+    letter-spacing: 1px;
+    text-transform: uppercase;
+    margin-bottom: 16px;
+  }
+
+  /* PARAM TABLE */
+  .param-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 12px;
+    margin: 16px 0;
+  }
+  .param-item {
+    background: var(--card);
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    padding: 14px 16px;
+  }
+  .param-item .param-name {
+    font-family: 'Space Mono', monospace;
+    font-size: 13px;
+    font-weight: 700;
+    color: var(--accent);
+    margin-bottom: 4px;
+  }
+  .param-item .param-desc {
+    font-size: 12px;
+    color: var(--muted);
+  }
+
+  /* LIFECYCLE */
+  .lifecycle {
+    display: flex;
+    gap: 0;
+    margin: 24px 0;
+    overflow-x: auto;
+  }
+  .lifecycle-step {
+    flex: 1;
+    min-width: 130px;
+    text-align: center;
+    padding: 18px 10px;
+    background: var(--card);
+    border: 1px solid var(--border);
+    position: relative;
+  }
+  .lifecycle-step:not(:last-child)::after {
+    content: '→';
+    position: absolute;
+    right: -14px;
+    top: 50%;
+    transform: translateY(-50%);
+    color: var(--accent);
+    font-size: 16px;
+    z-index: 1;
+    background: var(--bg);
+    padding: 0 4px;
+  }
+  .lifecycle-step:first-child { border-radius: 6px 0 0 6px; }
+  .lifecycle-step:last-child { border-radius: 0 6px 6px 0; }
+  .lifecycle-step .step-num {
+    font-family: 'Space Mono', monospace;
+    font-size: 10px;
+    color: var(--accent);
+    letter-spacing: 1px;
+    margin-bottom: 6px;
+  }
+  .lifecycle-step .step-name {
+    font-size: 12px;
+    font-weight: 700;
+    color: var(--text);
+    line-height: 1.3;
+  }
+
+  /* INSTRUCTION TABLE */
+  .instruction-table {
+    width: 100%;
+    border-collapse: collapse;
+    margin: 16px 0;
+    font-size: 14px;
+  }
+  .instruction-table th {
+    background: var(--bg3);
+    padding: 10px 16px;
+    text-align: left;
+    font-family: 'Space Mono', monospace;
+    font-size: 11px;
+    letter-spacing: 2px;
+    text-transform: uppercase;
+    color: var(--muted);
+    border-bottom: 1px solid var(--border);
+  }
+  .instruction-table td {
+    padding: 10px 16px;
+    border-bottom: 1px solid var(--border);
+    vertical-align: top;
+  }
+  .instruction-table tr:hover td { background: rgba(255,255,255,0.02); }
+  .instruction-table .inst { font-family: 'Space Mono', monospace; color: var(--accent); font-weight: 700; font-size: 13px; }
+  .instruction-table .desc { color: #bbb; font-size: 13px; }
+
+  /* DIVIDER */
+  .divider { border: none; border-top: 1px solid var(--border); margin: 36px 0; }
+
+  /* GLOSSARY */
+  .glossary-item {
+    background: var(--card);
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    padding: 16px 20px;
+    margin-bottom: 12px;
+  }
+  .glossary-item .term {
+    font-family: 'Space Mono', monospace;
+    font-size: 13px;
+    font-weight: 700;
+    color: var(--accent);
+    margin-bottom: 6px;
+  }
+  .glossary-item .definition {
+    font-size: 13px;
+    color: var(--muted);
+    line-height: 1.6;
+  }
+
+  /* ATTENTION */
+  .attention {
+    background: rgba(224,108,117,0.08);
+    border: 1px solid rgba(224,108,117,0.3);
+    border-radius: 8px;
+    padding: 16px 20px;
+    margin: 16px 0;
+    font-size: 14px;
+    color: #ccc;
+  }
+  .attention strong { color: #e06c75; }
+
+</style>
+</head>
+<body>
+
+<div class="hero">
+  <div class="hero-label">Impacta Digital · Prof. Daniel Lemeszenski</div>
+  <h1>Fundamentos de<br>Docker e Container</h1>
+  <div class="hero-sub">Desenvolvimento Seguro · Módulo 2</div>
+</div>
+
+<nav class="nav">
+  <button class="nav-btn active" onclick="showSection('p1')">Parte 1 · Conceitos Básicos</button>
+  <button class="nav-btn" onclick="showSection('p2')">Parte 2 · Instalação</button>
+  <button class="nav-btn" onclick="showSection('p3')">Parte 3 · Primeiro Container</button>
+  <button class="nav-btn" onclick="showSection('p4')">Parte 4 · Dockerfile</button>
+</nav>
+
+<!-- ===== PARTE 1 ===== -->
+<section id="p1" class="section active">
+  <div class="section-header">
+    <div class="section-tag">_Parte 1 · 00:53</div>
+    <h2>Conceitos Básicos de Virtualização</h2>
+  </div>
+
+  <div class="topic">
+    <div class="badge">Histórico</div>
+    <h3>Virtualização e Máquinas Virtuais</h3>
+    <p>Antes dos containers, o modelo dominante era o das <strong>Máquinas Virtuais (VMs)</strong>, tecnologia que surgiu durante a década de 1960 com a IBM. Uma VM roda em cima de um componente chamado <strong>hypervisor</strong>, que faz a mediação entre o hardware físico e os sistemas operacionais convidados. Exemplos clássicos de hypervisor: <em>VMware</em> e <em>VirtualBox</em>.</p>
+
+    <div class="grid-2">
+      <div class="card accent-border">
+        <h4>Tipo 1 — Bare Metal</h4>
+        <p>Executa diretamente sobre o hardware, sem sistema operacional intermediário. Oferece alto desempenho, controle e isolamento. Exige maior custo. Ex: VMware ESXi, Hyper-V.</p>
+      </div>
+      <div class="card accent-border">
+        <h4>Tipo 2 — Hosted</h4>
+        <p>Executa sobre um sistema operacional host. Menor desempenho, mas muito mais flexível e fácil de usar. Ex: VirtualBox, VMware Workstation.</p>
+      </div>
+    </div>
+
+    <div class="compare">
+      <div class="compare-header">
+        <span>Critério</span>
+        <span>Bare Metal (Servidor Físico)</span>
+        <span>Virtualização (VM)</span>
+      </div>
+      <div class="compare-row">
+        <span class="label">Desempenho</span>
+        <span class="vm">Alto — recursos dedicados</span>
+        <span class="container-col">Compartilhado entre VMs</span>
+      </div>
+      <div class="compare-row">
+        <span class="label">Isolamento</span>
+        <span class="vm">Máximo — sem compartilhamento</span>
+        <span class="container-col">Bom, por hypervisor</span>
+      </div>
+      <div class="compare-row">
+        <span class="label">Custo</span>
+        <span class="vm">Alto</span>
+        <span class="container-col">Reduzido via compartilhamento</span>
+      </div>
+      <div class="compare-row">
+        <span class="label">Ferramentas Cloud</span>
+        <span class="vm">—</span>
+        <span class="container-col">AWS EC2, Azure VM, Google Compute</span>
+      </div>
+    </div>
+  </div>
+
+  <hr class="divider">
+
+  <div class="topic">
+    <div class="badge">09:26 — Linux</div>
+    <h3>Componentes do Linux (e de qualquer SO)</h3>
+    <p>Entender Linux é fundamental porque os containers nasceram como uma tecnologia primariamente Linux. Os principais componentes de um sistema operacional são:</p>
+
+    <div class="grid-2">
+      <div class="card"><h4>Kernel</h4><p>Núcleo do sistema operacional. Gerencia os recursos do hardware.</p></div>
+      <div class="card"><h4>Shell</h4><p>Interpretador de linha de comando. Interface entre usuário e SO.</p></div>
+      <div class="card"><h4>Sistema de arquivos</h4><p>Organiza e armazena arquivos em estrutura hierárquica de diretórios.</p></div>
+      <div class="card"><h4>Bibliotecas</h4><p>Coleção de código pré-escrito. Fornece funções para o desenvolvimento.</p></div>
+      <div class="card"><h4>Serviços e Daemons</h4><p>Processos em segundo plano executados automaticamente pelo sistema.</p></div>
+      <div class="card"><h4>Gerenciador de pacotes</h4><p>Ferramenta para instalar, atualizar e remover software (apt, yum, dnf).</p></div>
+    </div>
+  </div>
+
+  <hr class="divider">
+
+  <div class="topic">
+    <div class="badge">12:35 — Container</div>
+    <h3>O que é um Container?</h3>
+
+    <div class="attention">
+      <strong>Atenção:</strong> o container não carrega todos os módulos do S.O. Linux como uma VM faz. Ele contém <strong>apenas os componentes necessários para rodar a aplicação</strong>.
+    </div>
+
+    <p>Um container é uma tecnologia que permite executar aplicativos de forma isolada usando recursos do kernel Linux — especificamente <strong>namespaces</strong> (para isolamento) e <strong>cgroups</strong> (para controle de recursos). Vários containers compartilham o mesmo kernel do host, mas têm seus próprios sistemas de arquivos, processos e rede.</p>
+
+    <div class="highlight-box">
+      <p>A tecnologia de containers tem raízes no <strong>chroot (1979)</strong>, evoluiu com os <strong>cgroups introduzidos no kernel Linux em 2006</strong>, e foi popularizada mundialmente pelo <strong>Docker em 2013</strong>.</p>
+    </div>
+
+    <div class="compare">
+      <div class="compare-header">
+        <span>Critério</span>
+        <span>VM</span>
+        <span>Container</span>
+      </div>
+      <div class="compare-row">
+        <span class="label">Kernel</span>
+        <span class="vm">Próprio (SO completo)</span>
+        <span class="container-col">Compartilha o do host</span>
+      </div>
+      <div class="compare-row">
+        <span class="label">Tamanho</span>
+        <span class="vm">Gigabytes</span>
+        <span class="container-col">Megabytes</span>
+      </div>
+      <div class="compare-row">
+        <span class="label">Inicialização</span>
+        <span class="vm">Minutos</span>
+        <span class="container-col">Segundos</span>
+      </div>
+      <div class="compare-row">
+        <span class="label">Isolamento</span>
+        <span class="vm">Forte (hypervisor)</span>
+        <span class="container-col">Via namespaces/cgroups</span>
+      </div>
+      <div class="compare-row">
+        <span class="label">Portabilidade</span>
+        <span class="vm">Pesada (transferência lenta)</span>
+        <span class="container-col">Leve e rápida</span>
+      </div>
+    </div>
+
+    <div class="quote">A VM, como carrega todas essas aplicações, todos esses componentes, acaba sendo tanto pesada para transferir de um servidor para outro, quanto para inicializar e parar. — Prof. Daniel</div>
+
+    <p style="margin-top:16px; color:#bbb; font-size:15px;">As vantagens do container incluem: implantação automatizada (DevSecOps), isolamento de falhas em cascata, redução de espaço em disco, agilidade, elasticidade, melhoria na governança e inicialização muito mais rápida.</p>
+  </div>
+
+  <hr class="divider">
+
+  <div class="topic">
+    <div class="badge">20:24 — Docker</div>
+    <h3>Por que o Docker nasceu?</h3>
+    <p>A origem do Docker é prática: imagine um desenvolvedor que entrega um pacote que não funciona em produção. Ele argumenta que na própria máquina tudo estava funcionando. A solução seria levar a máquina inteira para a produção — e <strong>assim nasceu o Docker</strong>. Ele garante que o comportamento da aplicação em dev, homologação e produção seja idêntico, eliminando o esforço de comparação entre ambientes.</p>
+
+    <div class="grid-3">
+      <div class="card highlight">
+        <h4>Docker</h4>
+        <p>Plataforma open source para construir, gerenciar e executar containers. A mais popular do mercado.</p>
+      </div>
+      <div class="card">
+        <h4>Podman</h4>
+        <p>Alternativa open source. Roda sem daemon e sem privilégios de root. Compatível com Linux, Windows e Mac.</p>
+      </div>
+      <div class="card">
+        <h4>Containerd</h4>
+        <p>Gerencia o ciclo de vida dos containers desde o download da imagem até a execução e supervisão.</p>
+      </div>
+    </div>
+
+    <p style="color:#bbb; font-size:14px; margin-top:8px;">O Docker deve ser evitado quando: o SO completo for necessário, para aplicações monolíticas, hardware específico ou necessidades especiais. Para projetos profissionais, o ideal é <strong>um serviço por container</strong> — vários serviços no mesmo container levam a conflitos e dificuldade de gerenciamento.</p>
+  </div>
+</section>
+
+<!-- ===== PARTE 2 ===== -->
+<section id="p2" class="section">
+  <div class="section-header">
+    <div class="section-tag">_Parte 2 · 01:35</div>
+    <h2>Instalação do Docker</h2>
+  </div>
+
+  <div class="topic">
+    <p>Existem diversas formas de instalar o Docker. As principais são: <strong>Docker Engine</strong>, <strong>Docker Desktop</strong>, <strong>Docker Toolbox</strong> e via <strong>gerenciador de pacote</strong> do sistema operacional.</p>
+
+    <div class="quote">É muito importante, antes de a gente sair fazendo, que a gente faça uma pesquisa e entenda as principais opções do mercado. — Prof. Daniel</div>
+
+    <div class="grid-2" style="margin-top:24px">
+      <div>
+        <div class="card accent-border" style="margin-bottom:16px">
+          <h4>Docker Desktop</h4>
+          <p>Disponível para Windows, MacOS e Linux. Inclui Docker CLI, Docker Compose, Docker Daemon e Kubernetes. Requer: virtualização habilitada na BIOS + Hyper-V + Containers Windows features.</p>
+        </div>
+        <div class="card" style="margin-bottom:16px">
+          <h4>Docker Engine via Script (Ubuntu)</h4>
+          <p>Instalação via Convenient Script. O mais comum em ambientes Linux/servidor.</p>
+        </div>
+        <div class="card">
+          <h4>Docker Toolbox</h4>
+          <p>Alternativa para sistemas mais antigos que não suportam Docker Desktop. Inclui Docker Machine e VirtualBox. <span style="color:#e06c75">Considerada obsoleta.</span></p>
+        </div>
+      </div>
+      <div>
+        <div class="card" style="margin-bottom:16px">
+          <h4>Instalação por SO</h4>
+          <p style="margin-bottom:8px"><span style="color:var(--accent); font-weight:700">Linux:</span> via apt, yum ou dnf</p>
+          <p style="margin-bottom:8px"><span style="color:var(--accent); font-weight:700">MacOS:</span> via Homebrew — <code style="background:var(--code-bg); padding:2px 6px; border-radius:3px; font-family:'Space Mono',monospace; font-size:12px">brew install docker</code></p>
+          <p><span style="color:var(--accent); font-weight:700">Windows:</span> via Chocolatey — <code style="background:var(--code-bg); padding:2px 6px; border-radius:3px; font-family:'Space Mono',monospace; font-size:12px">choco install docker</code></p>
+        </div>
+        <div class="card highlight">
+          <h4>Docker Community vs Enterprise</h4>
+          <p><strong style="color:var(--accent)">Community:</strong> open-source para desenvolvedores.<br><br><strong style="color:var(--accent)">Enterprise:</strong> pago, robusto para empresas. Inclui suporte técnico, segurança avançada, certificação para produção e orquestração integrada.</p>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <hr class="divider">
+
+  <div class="topic">
+    <div class="badge">Script de Instalação — Ubuntu</div>
+    <div class="code-block">
+<span class="comment"># Convenient Script — baixa e executa o instalador do Docker</span>
+<span class="cmd">curl</span> -fsSL https://get.docker.com -o get-docker.sh
+<span class="sudo">sudo</span> sh ./get-docker.sh --dry-run
+    </div>
+
+    <div class="code-block">
+<span class="comment"># Instalação manual via apt (Ubuntu)</span>
+<span class="sudo">sudo</span> add-apt-repository <span class="string">"deb [arch=amd64] https://download.docker.com/linux/ubuntu $(lsb_release -cs) stable"</span>
+
+<span class="sudo">sudo</span> apt update
+<span class="sudo">sudo</span> apt install docker-ce
+<span class="sudo">sudo</span> systemctl status docker
+
+<span class="comment"># Adicionar usuário ao grupo Docker (para executar sem sudo)</span>
+<span class="sudo">sudo</span> usermod -aG docker $USER
+<span class="comment"># Sair da sessão e entrar em uma nova</span>
+
+<span class="cmd">docker</span> run hello-world
+    </div>
+
+    <div class="highlight-box">
+      <p>Adicionar o usuário ao grupo Docker é necessário para <strong>executar os comandos sem ficar pedindo permissão</strong> a cada vez.</p>
+    </div>
+  </div>
+
+  <hr class="divider">
+
+  <div class="topic">
+    <div class="badge">08:25 — Container e Imagem</div>
+    <h3>Container e Imagem: a diferença fundamental</h3>
+    <p>Um container funciona como um micro-VM rodando no sistema operacional dentro do host. Cada componente — backend, frontend, banco — executa em seu próprio processo isolado, completamente separado de tudo mais na máquina. No Docker, o container é uma forma de virtualização leve que cria um ambiente isolado para executar aplicações, <strong>compartilhando o kernel do host</strong>.</p>
+
+    <p>A <strong>imagem Docker</strong> é um pacote padronizado que inclui todos os arquivos binários, bibliotecas e configurações necessárias para criar um container. Ela é construída a partir de um arquivo chamado <strong>Dockerfile</strong>, que define as instruções para sua criação. Isso garante que a aplicação funcione de maneira consistente em qualquer ambiente.</p>
+
+    <div class="grid-3" style="margin-top:20px">
+      <div class="card highlight">
+        <h4>Oficiais</h4>
+        <p>Imagens mantidas pela própria empresa dona do software. Máxima confiabilidade.</p>
+      </div>
+      <div class="card highlight">
+        <h4>Selos (Verified)</h4>
+        <p>Publicadas por editores verificados pelo Docker. Alta confiabilidade.</p>
+      </div>
+      <div class="card highlight">
+        <h4>Open Source</h4>
+        <p>Patrocinadas pela Docker. Código aberto e auditável.</p>
+      </div>
+    </div>
+
+    <div class="card" style="margin-top:16px">
+      <h4>Docker Hub</h4>
+      <p>É o registro público padrão. O comando <code style="background:var(--code-bg); padding:2px 6px; border-radius:3px; font-family:'Space Mono',monospace; font-size:12px">docker</code> procura imagens aqui por padrão. Usuários podem deixar imagens privadas. Empresas podem criar <strong>registries privados</strong> (GitHub, Azure, AWS Elastic Registry, Google).</p>
+    </div>
+  </div>
+</section>
+
+<!-- ===== PARTE 3 ===== -->
+<section id="p3" class="section">
+  <div class="section-header">
+    <div class="section-tag">_Parte 3 · 00:43</div>
+    <h2>Criando o Primeiro Container</h2>
+  </div>
+
+  <div class="topic">
+    <p>Para criar e executar o primeiro container, o comando principal é o <strong>docker run</strong>. Se a imagem não existir localmente, o Docker busca automaticamente no Docker Hub e faz o download.</p>
+
+    <div class="code-block">
+<span class="comment"># Comando básico — cria e executa um container hello-world</span>
+<span class="cmd">docker</span> run hello-world
+    </div>
+
+    <div class="code-block">
+<span class="comment"># Parâmetros adicionais para definir o container com mais controle</span>
+<span class="comment"># --name: nome do container | -p: mapeamento de porta | -d: modo background | nginx: imagem</span>
+<span class="cmd">docker</span> run <span class="param">--name</span> meu-nginx <span class="param">-p</span> 8080:80 <span class="param">-d</span> nginx
+    </div>
+
+    <div class="code-block">
+<span class="comment"># Lab 03 — Listar todos os containers (-a = all, incluindo parados)</span>
+<span class="cmd">docker</span> container ls -a
+    </div>
+
+    <div class="quote">É sempre importante você definir explicitamente o nome que você quer dar para o seu container. — Prof. Daniel</div>
+
+    <hr class="divider">
+
+    <div class="badge">Parâmetros do docker run</div>
+    <div class="param-grid">
+      <div class="param-item">
+        <div class="param-name">--name</div>
+        <div class="param-desc">Define o nome do container. Facilita referenciá-lo depois.</div>
+      </div>
+      <div class="param-item">
+        <div class="param-name">-p [externa:interna]</div>
+        <div class="param-desc">Mapeia porta do host para porta do container. Ex: -p 8080:80</div>
+      </div>
+      <div class="param-item">
+        <div class="param-name">-d</div>
+        <div class="param-desc">Detach — executa em modo background (não trava o terminal).</div>
+      </div>
+      <div class="param-item">
+        <div class="param-name">nginx (imagem)</div>
+        <div class="param-desc">Nome da imagem a usar. Sem versão explícita usa a tag <em>latest</em>.</div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ===== PARTE 4 ===== -->
+<section id="p4" class="section">
+  <div class="section-header">
+    <div class="section-tag">_Parte 4 · 00:23</div>
+    <h2>Dockerfile e Imagens</h2>
+  </div>
+
+  <div class="topic">
+    <p>Até a Parte 3, o professor trabalhou com <strong>imagens prontas</strong> disponíveis no Docker Hub. A partir daqui, o objetivo é <strong>criar suas próprias imagens</strong> usando o <strong>Dockerfile</strong> — um script que contém um conjunto de instruções definindo como a imagem deve ser construída.</p>
+
+    <div class="attention">
+      <strong>Atenção de segurança:</strong> deve-se <strong>evitar dados sensíveis</strong> como senhas ou chaves diretamente no Dockerfile. Além disso, cada instrução cria uma nova camada na imagem — camadas otimizadas ajudam a reduzir o tamanho final.
+    </div>
+
+    <div class="badge" style="margin-top:20px">Instruções Dockerfile</div>
+    <table class="instruction-table">
+      <thead>
+        <tr>
+          <th>Instrução</th>
+          <th>Função</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td class="inst">FROM</td>
+          <td class="desc">Define a imagem base (ex: ubuntu, node, python:3.9-slim)</td>
+        </tr>
+        <tr>
+          <td class="inst">COPY / ADD</td>
+          <td class="desc">Copia arquivos do host para dentro do container</td>
+        </tr>
+        <tr>
+          <td class="inst">RUN</td>
+          <td class="desc">Executa comandos durante a construção da imagem</td>
+        </tr>
+        <tr>
+          <td class="inst">CMD / ENTRYPOINT</td>
+          <td class="desc">Define o comando principal a executar quando o container iniciar</td>
+        </tr>
+        <tr>
+          <td class="inst">EXPOSE</td>
+          <td class="desc">Indica quais portas o container usará</td>
+        </tr>
+        <tr>
+          <td class="inst">WORKDIR</td>
+          <td class="desc">Define o diretório de trabalho dentro do container</td>
+        </tr>
+      </tbody>
+    </table>
+  </div>
+
+  <hr class="divider">
+
+  <div class="grid-2">
+    <div>
+      <div class="badge">Exemplo — Python</div>
+      <div class="code-block">
+<span class="comment"># Use uma imagem base do Python</span>
+<span class="keyword">FROM</span> <span class="value">python:3.9-slim</span>
+<span class="comment"># Defina o diretório de trabalho no container</span>
+<span class="keyword">WORKDIR</span> /app
+<span class="comment"># Copie os arquivos necessários para o diretório</span>
+<span class="keyword">COPY</span> . /app
+<span class="comment"># Instale as dependências</span>
+<span class="keyword">RUN</span> pip install -r requirements.txt
+<span class="comment"># Comando para rodar a aplicação</span>
+<span class="keyword">CMD</span> [<span class="string">"python"</span>, <span class="string">"python2.py"</span>]
+      </div>
+    </div>
+    <div>
+      <div class="badge">Exemplo — Java</div>
+      <div class="code-block">
+<span class="comment"># Define a imagem base do OpenJDK</span>
+<span class="keyword">FROM</span> <span class="value">openjdk:17-jdk-slim</span>
+<span class="comment"># Define um diretório de trabalho dentro do contêiner</span>
+<span class="keyword">WORKDIR</span> /app
+<span class="comment"># Copia o arquivo JAR da aplicação para o contêiner</span>
+<span class="keyword">COPY</span> target/minha-aplicacao.jar /app/minha-aplicacao.jar
+<span class="comment"># Expõe a porta 8000</span>
+<span class="keyword">EXPOSE</span> <span class="value">8000</span>
+<span class="comment"># Define o comando de execução da aplicação</span>
+<span class="keyword">CMD</span> [<span class="string">"java"</span>, <span class="string">"-jar"</span>, <span class="string">"/app/minha-aplicacao.jar"</span>]
+      </div>
+    </div>
+  </div>
+
+  <hr class="divider">
+
+  <div class="topic">
+    <div class="badge">14:31 — Ciclo de Vida Docker</div>
+    <h3>Os 6 passos do ciclo de vida</h3>
+
+    <div class="lifecycle">
+      <div class="lifecycle-step">
+        <div class="step-num">01</div>
+        <div class="step-name">Criar Dockerfile</div>
+      </div>
+      <div class="lifecycle-step">
+        <div class="step-num">02</div>
+        <div class="step-name">Construir Imagem</div>
+      </div>
+      <div class="lifecycle-step">
+        <div class="step-num">03</div>
+        <div class="step-name">Armazenar Imagem</div>
+      </div>
+      <div class="lifecycle-step">
+        <div class="step-num">04</div>
+        <div class="step-name">Compartilhar Imagem</div>
+      </div>
+      <div class="lifecycle-step">
+        <div class="step-num">05</div>
+        <div class="step-name">Usar Imagem</div>
+      </div>
+      <div class="lifecycle-step">
+        <div class="step-num">06</div>
+        <div class="step-name">Executar Aplicação</div>
+      </div>
+    </div>
+
+    <div class="highlight-box" style="margin-top:20px">
+      <p>Para minimizar o tamanho da imagem: use <strong>imagens base leves</strong> como Alpine, remova dependências desnecessárias, e coloque as instruções que mudam com menos frequência no início do Dockerfile para aproveitar o <strong>cache de construção</strong>.</p>
+    </div>
+  </div>
+
+  <hr class="divider">
+
+  <div class="topic">
+    <div class="badge">Glossário</div>
+    <div class="glossary-item">
+      <div class="term">Registry (Registro)</div>
+      <div class="definition">Local centralizado que armazena e gerencia imagens de um mesmo container. O mais conhecido é o Docker Hub.</div>
+    </div>
+    <div class="glossary-item">
+      <div class="term">Repository (Repositório)</div>
+      <div class="definition">Coleção de versões de imagens de container relacionadas dentro de um registry. É como um "projeto" dentro do Docker Hub.</div>
+    </div>
+    <div class="glossary-item">
+      <div class="term">.ISO</div>
+      <div class="definition">Imagem de disco que contém uma cópia exata do sistema de arquivo de uma VM. Funciona como um "snapshot" de uma máquina em execução, usado para distribuir sistemas operacionais e aplicações instaladas.</div>
+    </div>
+  </div>
+</section>
+
+<script>
+  function showSection(id) {
+    document.querySelectorAll('.section').forEach(s => s.classList.remove('active'));
+    document.querySelectorAll('.nav-btn').forEach(b => b.classList.remove('active'));
+    document.getElementById(id).classList.add('active');
+    const idx = ['p1','p2','p3','p4'].indexOf(id);
+    document.querySelectorAll('.nav-btn')[idx].classList.add('active');
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+  }
+</script>
+</body>
+</html>
